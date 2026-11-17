@@ -1,0 +1,124 @@
+<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Listen · Respo</title><script>
+// Appels au script Google en ANONYME (sans les comptes Google du téléphone)
+var API_URL = "https://script.google.com/macros/s/AKfycbyoZbYvGGwUhJfpC52K5OMsQC7DyqwYTjUJC9QZnSaorJaglneOiArF-oN7w-4n1ehP/exec";
+function callApi(fn, args, ok, ko) {
+  fetch(API_URL, { method: 'POST', credentials: 'omit', redirect: 'follow', body: JSON.stringify({ fn: fn, args: args }) })
+    .then(function (r) { return r.json(); })
+    .then(function (j) { if (j.ok) { ok && ok(j.data); } else { ko && ko({ message: j.error }); } })
+    .catch(function () { ko && ko({ message: 'Pas de connexion internet. Réessaie dans un instant.' }); });
+}
+window.google = { script: { get run() {
+  var s = null, f = null, p = new Proxy({}, { get: function (t, k) {
+    if (k === 'withSuccessHandler') return function (x) { s = x; return p; };
+    if (k === 'withFailureHandler') return function (x) { f = x; return p; };
+    return function () { callApi(k, [].slice.call(arguments), s, f); };
+  } });
+  return p;
+} } };
+</script><style>
+*{box-sizing:border-box}body{font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;margin:0;background:#14142b;color:#fff}
+.wrap{max-width:560px;margin:0 auto;padding:18px}h1{font-size:22px;margin:6px 0 2px}h1 span{color:#ff7a59}.sub{color:#b9b9d0;margin:0 0 18px;font-size:14px}
+label{display:block;font-size:13px;color:#b9b9d0;margin:14px 0 6px}select,input{width:100%;padding:14px;font-size:17px;border-radius:12px;border:1px solid #3a3a5c;background:#22223d;color:#fff}
+button{width:100%;padding:16px;font-size:17px;font-weight:700;border:0;border-radius:12px;background:#ff7a59;color:#14142b;margin-top:20px;cursor:pointer}
+button.sec{background:#2e2e52;color:#fff;font-weight:600}button.small{width:auto;padding:9px 12px;font-size:14px;margin:0}button:disabled{opacity:.5}
+.err{background:#5c1d2a;color:#ffd5dc;padding:12px;border-radius:10px;margin-top:14px;display:none}.ok{text-align:center;padding:30px 10px}
+.big{font-size:56px;font-weight:800;color:#7ee0a1;margin:10px 0}.sugg{background:#22223d;border:1px solid #3a3a5c;border-radius:12px;margin-top:4px}
+.sugg div{padding:12px 14px;border-bottom:1px solid #2e2e52;cursor:pointer}.warn{color:#ffd27a}
+.card{background:#22223d;border-radius:12px;padding:12px;margin:8px 0;display:grid;grid-template-columns:1fr auto;gap:6px 10px;align-items:center}
+.card.done{background:#1c1c33;border:1px dashed #4a4a72}.card.done .nm{color:#d8d8ea}.edit{font-size:12px;color:#8f8fb5;grid-column:1/3}.nm{font-weight:700}.pt{font-size:12px;color:#b9b9d0}.row{display:flex;gap:8px;align-items:center;grid-column:1/3}
+.row input{padding:8px;font-size:16px;width:110px}.tag{font-size:12px;background:#2e2e52;padding:3px 8px;border-radius:8px}
+.card.multi{border:2px solid #ff4d5e;background:#3a1d2b;opacity:1}.alt{color:#ff9aa5;font-size:13px;font-weight:700;margin-top:3px}
+.card.prevu{background:transparent;border:1px dashed #5a5a85}.card.prevu .nm{color:#b9b9d0}.sec2{background:#2e7d32;color:#fff}
+.who{font-size:13px;color:#b9b9d0;margin:-8px 0 8px}.who a{color:#ff7a59}.hi{padding:8px 0;border-bottom:1px solid #2e2e52;font-size:14px}.hq{color:#ff7a59;font-weight:700}.hp{font-size:12px;color:#8f8fb5;margin-top:2px}
+.modal{position:fixed;inset:0;background:rgba(5,5,15,.75);display:none;align-items:center;justify-content:center;padding:20px;z-index:9}
+.box{background:#22223d;border-radius:16px;padding:22px;max-width:380px;width:100%;text-align:center}.box h2{margin:0 0 8px;font-size:22px}
+.box p{color:#c9c9e0;margin:0 0 4px}.yn{display:flex;gap:10px;margin-top:18px}.yn button{margin:0}.yn .non{background:#2e2e52;color:#fff}
+.grp{margin-top:18px;font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:#ff7a59}.bar{display:flex;gap:8px;margin:12px 0}.bar button{margin:0}
+</style></head><body><div class="wrap">
+<h1>Espace <span>respo</span></h1>
+<div id="login"><p class="sub">Venue managers et respos : ton lieu et son code à 4 chiffres.</p>
+<label>Lieu</label><select id="lieu"><option value="">Choisis ton lieu…</option></select>
+<label>Code</label><input id="code" inputmode="numeric" maxlength="4" pattern="[0-9]*" placeholder="••••">
+<label>Ton prénom et nom (respo)</label><input id="rnom" autocomplete="name" placeholder="Ex. Margaux Dupont">
+<p class="sub" style="margin-top:6px;font-size:12px">Chaque modification est enregistrée à ton nom dans l'historique du lieu.</p>
+<button onclick="login()">Entrer</button><div class="err" id="err"></div></div>
+<div id="main" style="display:none">
+<p class="sub" id="info"></p>
+<p class="who" id="who"></p>
+<div class="bar"><button class="sec" onclick="charger()">↻ Rafraîchir</button><button class="sec" onclick="ouvrirAjout()">+ Ajouter</button><button class="sec" onclick="histo()">Historique</button></div>
+<div id="hist" style="display:none;background:#1c1c36;padding:12px;border-radius:12px;margin-bottom:8px"></div>
+<div id="add" style="display:none;background:#1c1c36;padding:12px;border-radius:12px">
+<p class="sub" style="margin:0">Pour quelqu'un qui n'a pas pointé avec l'app.</p>
+<label>Prénom et nom</label><input id="anom" autocomplete="off"><div class="sugg" id="asugg"></div>
+<label>Poste</label><select id="aposte"></select>
+<label>Arrivée</label><input id="aarr" type="time"><label>Fin (facultatif)</label><input id="afin" type="time">
+<button onclick="ajouter()">Ajouter</button></div>
+<div class="ok2" id="msg" style="display:none;background:#1d4d33;color:#c9f5d9;padding:10px;border-radius:10px;margin-top:10px"></div>
+<button id="btous" onclick="tous()">Déshifter tout le monde</button>
+<div class="modal" id="modal"><div class="box"><h2>Êtes-vous sûr ?</h2><p id="mtxt"></p>
+<p style="font-size:13px">Les personnes déjà déshiftées ne changent pas. Tu pourras encore corriger chaque heure ensuite.</p>
+<div class="yn"><button class="non" onclick="fermer()">Non</button><button onclick="confirmerTous()">Oui</button></div></div></div>
+<div class="err" id="err2"></div><div id="liste"></div></div>
+</div>
+<script>
+var LIEU_URL = (new URLSearchParams(location.search).get('lieu') || ''), TOKEN = null, DATA = null;
+function $(i){return document.getElementById(i)}
+function err(m,id){var e=$(id||'err');e.textContent=m;e.style.display=m?'block':'none'}
+function toggle(i){$(i).style.display=$(i).style.display==='none'?'block':'none'}
+function fail(e){ if(String(e.message).indexOf('SESSION')>=0){ $('main').style.display='none'; $('login').style.display='block'; return err('Session expirée, reconnecte-toi.'); } err(e.message,'err2'); }
+google.script.run.withSuccessHandler(function(d){
+  d.lieux.forEach(function(l){var o=document.createElement('option');o.textContent=l;o.value=l;$('lieu').appendChild(o)});
+  if (LIEU_URL) $('lieu').value = LIEU_URL;
+}).apiInit();
+function login(){
+  err(''); google.script.run.withSuccessHandler(function(r){ TOKEN=r.token; $('login').style.display='none'; $('main').style.display='block'; charger(); })
+  .withFailureHandler(function(e){err(e.message)}).apiLogin($('lieu').value, $('code').value, $('rnom').value);
+}
+function charger(){ google.script.run.withSuccessHandler(rendre).withFailureHandler(fail).apiListe(TOKEN); }
+function rendre(d){
+  DATA=d; err('','err2'); $('who').innerHTML='Connecté·e : <b>'+esc(d.respo||'')+'</b> · <a href="#" onclick="location.reload();return false">changer de respo</a>';
+  var pres=d.staff.filter(function(s){return !s.fin && !s.prevu}).length, prev=d.staff.filter(function(s){return s.prevu}).length;
+  $('info').textContent = d.lieu + ' · nuit du ' + d.jour.split('-').reverse().join('/') + ' · ' + pres + ' présent(s), ' + (d.staff.length-pres-prev) + ' déshifté(s)' + (prev ? ', ' + prev + ' prévu(s) pas encore arrivé(s)' : '');
+  $('aposte').innerHTML=''; d.postes.forEach(function(p){var o=document.createElement('option');o.textContent=p;o.value=p;$('aposte').appendChild(o)});
+  $('btous').textContent = pres ? 'Déshifter tout le monde (' + pres + ' présent' + (pres>1?'s':'') + ')' : 'Tout le monde est déshifté'; $('btous').disabled = !pres;
+  var m=$('msg'); if(d.message){m.textContent=d.message;m.style.display='block';setTimeout(function(){m.style.display='none'},5000)}
+  var h='', g=null;
+  d.staff.forEach(function(s){
+    if(s.poste!==g){ g=s.poste; h+='<div class="grp">'+(g||'Sans poste')+'</div>'; }
+    if(s.prevu){ h+='<div class="card prevu"><div><div class="nm">'+esc(s.nom)+'</div><div class="pt">'+esc(s.planning||'Prévu')+' · pas encore arrivé·e</div></div>'+
+       '<button class="small sec2" onclick="maj(\''+s.id+'\',\'arrivee\',\'now\')">Arrivé·e</button>'+
+       '<div class="row">Arrivée <input type="time" value="" onchange="maj(\''+s.id+'\',\'arrivee\',this.value)"></div></div>'; return; }
+    h+='<div class="card'+(s.fin?' done':'')+(s.ailleurs?' multi':'')+'"><div><div class="nm">'+esc(s.nom)+'</div><div class="pt">'+(s.fin?('Heures : '+(s.heures!==''?s.heures:'?')):'Présent')+'</div>'+
+       (s.ailleurs?'<div class="alt">⚠ Aussi : '+esc(s.ailleurs)+'</div>':'')+'</div>'+
+       (s.fin?'<span class="tag">déshifté '+s.fin+'</span>':'<button class="small" onclick="maj(\''+s.id+'\',\'fin\',\'now\')">Déshifter</button>')+
+       '<div class="row">Arrivée <input type="time" value="'+s.arrivee+'" onchange="maj(\''+s.id+'\',\'arrivee\',this.value)">'+
+       ' Fin <input type="time" value="'+s.fin+'" onchange="maj(\''+s.id+'\',\'fin\',this.value)"></div>'+
+       (s.fin?'<div class="edit">Heures encore modifiables : change l\'arrivée ou la fin. Efface la fin pour le remettre présent.</div>':'')+'</div>';
+  });
+  $('liste').innerHTML = h || '<p class="sub">Personne n\'a encore pointé ce soir.</p>';
+}
+function esc(t){return String(t).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
+function maj(id,champ,val){ google.script.run.withSuccessHandler(function(d){ d.message = val==='now' ? (champ==='fin' ? 'Déshifté à ' : 'Arrivée enregistrée à ') + d.maintenant + '.' : 'Heure enregistrée.'; rendre(d); })
+  .withFailureHandler(fail).apiMaj(TOKEN,id,champ,val); }
+function tous(){
+  var pres=DATA.staff.filter(function(s){return !s.fin}).length; if(!pres) return;
+  $('mtxt').textContent = pres + ' personne' + (pres>1?'s':'') + ' encore présente' + (pres>1?'s':'') + ' ' + (pres>1?'seront déshiftées':'sera déshiftée') + ' maintenant, à l\'heure exacte.';
+  $('modal').style.display='flex'; }
+function histo(){ var h=$('hist'); if(h.style.display==='block'){h.style.display='none';return}
+  h.style.display='block'; h.innerHTML='<p class="sub">Chargement…</p>';
+  google.script.run.withSuccessHandler(function(l){
+    h.innerHTML='<div class="grp" style="margin-top:0">Historique de '+esc(DATA.lieu)+'</div>'+(l.length?l.map(function(x){
+      return '<div class="hi"><span class="hq">'+esc(x.quand.slice(11)||x.quand)+'</span> <b>'+esc(x.action)+'</b>'+(x.personne?' · '+esc(x.personne):'')+
+        ((x.avant||x.apres)?' · '+(x.avant?esc(x.avant)+' → ':'')+esc(x.apres):'')+'<div class="hp">par '+esc(x.par)+' · '+esc(x.quand)+'</div></div>'}).join(''):'<p class="sub">Rien pour le moment.</p>');
+  }).withFailureHandler(fail).apiHistorique(TOKEN); }
+function fermer(){ $('modal').style.display='none'; }
+function confirmerTous(){ fermer(); $('btous').disabled=true;
+  google.script.run.withSuccessHandler(rendre).withFailureHandler(fail).apiDestafferTous(TOKEN); }
+function ouvrirAjout(){ toggle('add'); $('aarr').value=DATA?DATA.maintenant:''; $('afin').value=''; $('anom').focus(); }
+var at=null;
+document.getElementById('anom').addEventListener('input',function(){ clearTimeout(at); var q=this.value; $('asugg').innerHTML=''; if(q.length<2)return;
+  at=setTimeout(function(){google.script.run.withSuccessHandler(function(l){ $('asugg').innerHTML='';
+    l.forEach(function(n){var d=document.createElement('div');d.textContent=n;d.onclick=function(){$('anom').value=n;$('asugg').innerHTML=''};$('asugg').appendChild(d)})}).apiChercherNoms(q)},300); });
+function ajouter(){ google.script.run.withSuccessHandler(function(d){ $('anom').value=''; $('asugg').innerHTML=''; toggle('add'); rendre(d); })
+  .withFailureHandler(fail).apiAjouter(TOKEN,$('anom').value,$('aposte').value,$('aarr').value,$('afin').value); }
+</script></body></html>

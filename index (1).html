@@ -1,0 +1,82 @@
+<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Listen · Pointage</title><script>if (new URLSearchParams(location.search).get('p') === 'respo') location.replace('respo.html' + location.search);</script><script>
+// Appels au script Google en ANONYME (sans les comptes Google du téléphone)
+var API_URL = "https://script.google.com/macros/s/AKfycbyoZbYvGGwUhJfpC52K5OMsQC7DyqwYTjUJC9QZnSaorJaglneOiArF-oN7w-4n1ehP/exec";
+function callApi(fn, args, ok, ko) {
+  fetch(API_URL, { method: 'POST', credentials: 'omit', redirect: 'follow', body: JSON.stringify({ fn: fn, args: args }) })
+    .then(function (r) { return r.json(); })
+    .then(function (j) { if (j.ok) { ok && ok(j.data); } else { ko && ko({ message: j.error }); } })
+    .catch(function () { ko && ko({ message: 'Pas de connexion internet. Réessaie dans un instant.' }); });
+}
+window.google = { script: { get run() {
+  var s = null, f = null, p = new Proxy({}, { get: function (t, k) {
+    if (k === 'withSuccessHandler') return function (x) { s = x; return p; };
+    if (k === 'withFailureHandler') return function (x) { f = x; return p; };
+    return function () { callApi(k, [].slice.call(arguments), s, f); };
+  } });
+  return p;
+} } };
+</script><style>
+*{box-sizing:border-box}body{font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;margin:0;background:#14142b;color:#fff}
+.wrap{max-width:560px;margin:0 auto;padding:18px}h1{font-size:22px;margin:6px 0 2px}h1 span{color:#ff7a59}.sub{color:#b9b9d0;margin:0 0 18px;font-size:14px}
+label{display:block;font-size:13px;color:#b9b9d0;margin:14px 0 6px}select,input{width:100%;padding:14px;font-size:17px;border-radius:12px;border:1px solid #3a3a5c;background:#22223d;color:#fff}
+button{width:100%;padding:16px;font-size:17px;font-weight:700;border:0;border-radius:12px;background:#ff7a59;color:#14142b;margin-top:20px;cursor:pointer}
+button.sec{background:#2e2e52;color:#fff;font-weight:600}button.small{width:auto;padding:9px 12px;font-size:14px;margin:0}button:disabled{opacity:.5}
+.err{background:#5c1d2a;color:#ffd5dc;padding:12px;border-radius:10px;margin-top:14px;display:none}.ok{text-align:center;padding:30px 10px}
+.big{font-size:56px;font-weight:800;color:#7ee0a1;margin:10px 0}.sugg{background:#22223d;border:1px solid #3a3a5c;border-radius:12px;margin-top:4px}
+.sugg div{padding:12px 14px;border-bottom:1px solid #2e2e52;cursor:pointer}.warn{color:#ffd27a}
+.card{background:#22223d;border-radius:12px;padding:12px;margin:8px 0;display:grid;grid-template-columns:1fr auto;gap:6px 10px;align-items:center}
+.card.done{background:#1c1c33;border:1px dashed #4a4a72}.card.done .nm{color:#d8d8ea}.edit{font-size:12px;color:#8f8fb5;grid-column:1/3}.nm{font-weight:700}.pt{font-size:12px;color:#b9b9d0}.row{display:flex;gap:8px;align-items:center;grid-column:1/3}
+.row input{padding:8px;font-size:16px;width:110px}.tag{font-size:12px;background:#2e2e52;padding:3px 8px;border-radius:8px}
+.card.multi{border:2px solid #ff4d5e;background:#3a1d2b;opacity:1}.alt{color:#ff9aa5;font-size:13px;font-weight:700;margin-top:3px}
+.card.prevu{background:transparent;border:1px dashed #5a5a85}.card.prevu .nm{color:#b9b9d0}.sec2{background:#2e7d32;color:#fff}
+.who{font-size:13px;color:#b9b9d0;margin:-8px 0 8px}.who a{color:#ff7a59}.hi{padding:8px 0;border-bottom:1px solid #2e2e52;font-size:14px}.hq{color:#ff7a59;font-weight:700}.hp{font-size:12px;color:#8f8fb5;margin-top:2px}
+.modal{position:fixed;inset:0;background:rgba(5,5,15,.75);display:none;align-items:center;justify-content:center;padding:20px;z-index:9}
+.box{background:#22223d;border-radius:16px;padding:22px;max-width:380px;width:100%;text-align:center}.box h2{margin:0 0 8px;font-size:22px}
+.box p{color:#c9c9e0;margin:0 0 4px}.yn{display:flex;gap:10px;margin-top:18px}.yn button{margin:0}.yn .non{background:#2e2e52;color:#fff}
+.grp{margin-top:18px;font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:#ff7a59}.bar{display:flex;gap:8px;margin:12px 0}.bar button{margin:0}
+</style></head><body><div class="wrap" id="app">
+<h1 id="fest">Pointage <span>staff</span></h1><p class="sub">Indique ton lieu, ton nom et ton poste à ton arrivée.</p>
+<div id="form">
+<label>Lieu</label><select id="lieu"><option value="">Choisis ton lieu…</option></select>
+<label>Prénom et nom</label><input id="nom" autocomplete="off" placeholder="Ex. Camille Dupont"><div class="sugg" id="sugg"></div>
+<label>Poste</label><select id="poste"><option value="">Choisis ton poste…</option></select>
+<button id="go" onclick="pointer()">Je suis arrivé·e</button><div class="err" id="err"></div>
+</div>
+<div id="done" class="ok" style="display:none"></div>
+</div>
+<script>
+var LIEU_URL = (new URLSearchParams(location.search).get('lieu') || ''), timer = null;
+function $(i){return document.getElementById(i)}
+function err(m){var e=$('err');e.textContent=m;e.style.display=m?'block':'none'}
+google.script.run.withSuccessHandler(function(d){
+  $('fest').innerHTML = d.festival + ' · <span>pointage</span>';
+  d.lieux.forEach(function(l){var o=document.createElement('option');o.textContent=l;o.value=l;$('lieu').appendChild(o)});
+  d.postes.forEach(function(p){var o=document.createElement('option');o.textContent=p;o.value=p;$('poste').appendChild(o)});
+  if (LIEU_URL) $('lieu').value = LIEU_URL;
+}).apiInit();
+$('nom').addEventListener('input', function(){
+  clearTimeout(timer); var q=this.value; $('sugg').innerHTML='';
+  if (q.length<2) return;
+  timer=setTimeout(function(){google.script.run.withSuccessHandler(function(l){
+    $('sugg').innerHTML=''; l.forEach(function(n){var d=document.createElement('div');d.textContent=n;
+      d.onclick=function(){$('nom').value=n;$('sugg').innerHTML=''};$('sugg').appendChild(d)})}).apiChercherNoms(q)},300);
+});
+function pointer(transfert){
+  err(''); var l=$('lieu').value, n=$('nom').value.trim(), p=$('poste').value;
+  if(!l||!n||!p) return err('Remplis les 3 champs.');
+  $('go').disabled=true; $('go').textContent='Enregistrement…';
+  google.script.run.withSuccessHandler(function(r){
+    $('go').disabled=false; $('go').textContent='Je suis arrivé·e';
+    if(r.deja){
+      if(r.autreLieu){ err('Tu es encore pointé·e à ' + r.lieu + ' (' + r.poste + ') depuis ' + r.heure + '.');
+        var b=document.createElement('button'); b.className='sec'; b.textContent='Je change de lieu : terminer à ' + r.lieu + ' et commencer ici';
+        b.onclick=function(){ b.remove(); pointer(true); }; $('err').appendChild(b); return; }
+      return err('Tu es déjà pointé·e ici (' + r.poste + ') depuis ' + r.heure + '. Si c\'est une erreur, vois ton respo.'); }
+    $('form').style.display='none';
+    $('done').innerHTML=(r.transfere?'<p class="warn">Fin enregistrée à ' + r.transfere + ' à ' + r.heure + '.</p>':'') + '<div>Bienvenue ' + r.prenom + ' !</div><div class="big">' + r.heure + '</div><div>' + r.lieu + ' · ' + r.poste + '</div>' +
+      (r.signee?'':'<p class="warn">⚠ Pas de fiche volontaire signée à ton nom : signe-la avant la fin de ton shift.</p>') +
+      '<button class="sec" onclick="location.reload()">Pointer quelqu\'un d\'autre</button>';
+    $('done').style.display='block';
+  }).withFailureHandler(function(e){$('go').disabled=false;$('go').textContent='Je suis arrivé·e';err(e.message)}).apiPointer(l,n,p,!!transfert);
+}
+</script></body></html>
